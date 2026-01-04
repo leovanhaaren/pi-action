@@ -1,42 +1,36 @@
 {
-  "name": "pi-action",
-  "version": "1.0.0",
-  "description": "GitHub Action to invoke the PI coding agent on issues and PRs",
-  
-  "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --format=cjs",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "check": "biome check --write .",
-    "typecheck": "tsc --noEmit",
-    "prepare": "npm run build"
-  },
-  "keywords": [
-    "github-action",
-    "pi",
-    "ai",
-    "coding-agent",
-    "automation"
-  ],
-  "author": "Carlos Villela",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cv/pi-action.git"
-  },
-  "bugs": {
-    "url": "https://github.com/cv/pi-action/issues"
-  },
-  "homepage": "https://github.com/cv/pi-action#readme",
-  "dependencies": {
-    "@actions/core": "^1.10.1",
-    "@actions/github": "^6.0.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@types/node": "^20.17.12",
-    "esbuild": "^0.24.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
-  }
+	"name": "pi-action",
+	"version": "1.0.0",
+	"description": "GitHub Action to invoke the PI coding agent on issues and PRs",
+
+	"scripts": {
+		"build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --format=cjs",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"check": "biome check --write .",
+		"typecheck": "tsc --noEmit",
+		"prepare": "npm run build"
+	},
+	"keywords": ["github-action", "pi", "ai", "coding-agent", "automation"],
+	"author": "Carlos Villela",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/cv/pi-action.git"
+	},
+	"bugs": {
+		"url": "https://github.com/cv/pi-action/issues"
+	},
+	"homepage": "https://github.com/cv/pi-action#readme",
+	"dependencies": {
+		"@actions/core": "^1.10.1",
+		"@actions/github": "^6.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/node": "^20.17.12",
+		"esbuild": "^0.24.2",
+		"typescript": "^5.7.2",
+		"vitest": "^2.1.8"
+	}
 }
