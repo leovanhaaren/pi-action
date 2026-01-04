@@ -10,13 +10,7 @@ import {
 	addReaction,
 	extractTriggerInfo,
 } from "./github.js";
-import {
-	RateLimiter,
-	logSecurityEvent,
-	sanitizeAgentResponse,
-	sanitizeInput,
-	validatePermissions,
-} from "./security.js";
+import { sanitizeInput, validatePermissions } from "./security.js";
 import type { SecurityContext } from "./security.js";
 import { shareSession } from "./share.js";
 import type { ModelConfig, RepoRef, Session, TriggerInfo } from "./types.js";
@@ -50,7 +44,6 @@ export interface ActionDependencies {
 	createClient: (token: string) => GitHubClient;
 	log: Logger;
 	cwd: string;
-	rateLimiter?: RateLimiter;
 }
 
 export function setupAuth(piAuthJson: string | undefined): void {
@@ -95,43 +88,6 @@ function validateTrigger(
 		log.warning(
 			`User ${triggerInfo.author.login} (${triggerInfo.authorAssociation}) does not have permission`,
 		);
-
-		// Log security event for unauthorized access attempt
-		logSecurityEvent(
-			"unauthorized_access",
-			triggerInfo.author.login,
-			{
-				authorAssociation: triggerInfo.authorAssociation,
-				isBot: securityContext.isBot,
-				issueNumber: triggerInfo.issueNumber,
-				triggerText: triggerInfo.triggerText.slice(0, 100), // First 100 chars for context
-			},
-			"high",
-		);
-
-		return null;
-	}
-
-	// Check rate limiting
-	const rateLimiter = deps.rateLimiter || new RateLimiter();
-	if (rateLimiter.isRateLimited(triggerInfo.author.login)) {
-		log.warning(
-			`User ${triggerInfo.author.login} is rate limited. Remaining attempts: ${rateLimiter.getRemainingAttempts(triggerInfo.author.login)}`,
-		);
-
-		// Log security event for rate limiting
-		logSecurityEvent(
-			"rate_limit",
-			triggerInfo.author.login,
-			{
-				remainingAttempts: rateLimiter.getRemainingAttempts(
-					triggerInfo.author.login,
-				),
-				issueNumber: triggerInfo.issueNumber,
-			},
-			"medium",
-		);
-
 		return null;
 	}
 
@@ -151,40 +107,14 @@ async function buildPIContext(
 	triggerInfo: TriggerInfo,
 	ghClient: GitHubClient,
 	triggerPhrase: string,
-	log: Logger,
 ): Promise<PIContext> {
 	const sanitizedBody = sanitizeInput(triggerInfo.triggerText);
 	const task = extractTask(sanitizedBody, triggerPhrase);
 
-	// Check for suspicious content after sanitization
-	const originalLength = triggerInfo.triggerText.length;
-	const sanitizedLength = sanitizedBody.length;
-	const filteringRatio = (originalLength - sanitizedLength) / originalLength;
-
-	if (filteringRatio > 0.1) {
-		// More than 10% of content was filtered
-		logSecurityEvent(
-			"injection_attempt",
-			triggerInfo.author.login,
-			{
-				originalLength,
-				sanitizedLength,
-				filteringRatio,
-				issueNumber: triggerInfo.issueNumber,
-				triggerPreview: triggerInfo.triggerText.slice(0, 200),
-			},
-			filteringRatio > 0.3 ? "high" : "medium",
-		);
-
-		log.warning(
-			`Suspicious content detected and filtered from user ${triggerInfo.author.login}`,
-		);
-	}
-
 	const piContext: PIContext = {
 		type: triggerInfo.isPullRequest ? "pull_request" : "issue",
-		title: sanitizeInput(triggerInfo.issueTitle),
-		body: sanitizeInput(triggerInfo.issueBody),
+		title: triggerInfo.issueTitle,
+		body: triggerInfo.issueBody,
 		number: triggerInfo.issueNumber,
 		triggerComment: sanitizedBody,
 		task,
@@ -192,8 +122,7 @@ async function buildPIContext(
 
 	// Get PR diff if applicable
 	if (triggerInfo.isPullRequest) {
-		const rawDiff = await ghClient.getPullRequestDiff(triggerInfo.issueNumber);
-		piContext.diff = sanitizeInput(rawDiff);
+		piContext.diff = await ghClient.getPullRequestDiff(triggerInfo.issueNumber);
 	}
 
 	return piContext;
@@ -234,26 +163,10 @@ async function postResult(
 	}
 
 	if (result.success) {
-		// Sanitize agent response before posting
-		const sanitizedResponse = sanitizeAgentResponse(result.response);
-
 		await addReaction(ghClient, triggerInfo, "rocket");
 		await ghClient.createComment(
 			triggerInfo.issueNumber,
-			formatSuccessComment(sanitizedResponse, shareUrl),
-		);
-
-		// Log successful completion
-		logSecurityEvent(
-			"suspicious_content",
-			triggerInfo.author.login,
-			{
-				action: "agent_response_sanitized",
-				originalLength: result.response.length,
-				sanitizedLength: sanitizedResponse.length,
-				issueNumber: triggerInfo.issueNumber,
-			},
-			"low",
+			formatSuccessComment(result.response, shareUrl),
 		);
 	} else {
 		log.error(`pi execution failed: ${result.error}`);
@@ -291,7 +204,6 @@ export async function run(deps: ActionDependencies): Promise<void> {
 		triggerInfo,
 		ghClient,
 		inputs.triggerPhrase,
-		log,
 	);
 
 	log.info(`Running pi agent for: ${piContext.task}`);

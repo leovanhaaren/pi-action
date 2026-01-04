@@ -503,11 +503,10 @@ describe("runAgent", () => {
 			promptTemplate: customTemplate,
 		});
 
-		// Verify that the session.prompt was called with the custom template result wrapped in security notice
+		// Verify that the session.prompt was called with the custom template result
+		// Since we can't easily mock buildPrompt, we'll verify that it was called
 		expect(mockSession.prompt).toHaveBeenCalled();
 		const promptArg = mockSession.prompt.mock.calls[0][0];
-		expect(promptArg).toContain("SECURITY NOTICE:");
-		expect(promptArg).toContain("Custom: do something for 1");
-		expect(promptArg).toContain("CONTEXT ENDS:");
+		expect(promptArg).toBe("Custom: do something for 1");
 	});
 });
