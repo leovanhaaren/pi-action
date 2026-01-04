@@ -72,12 +72,14 @@ async function buildPIContext(triggerInfo, ghClient, triggerPhrase) {
 /**
  * Posts the agent result as a comment with appropriate reaction.
  */
-async function postResult(ghClient, triggerInfo, result, shareSessionEnabled, log) {
+async function postResult(ghClient, gistClient, triggerInfo, result, shareSessionEnabled, log) {
     let shareUrl;
     // Try to share session if enabled and session exists
+    // Use gistClient if available, otherwise fall back to ghClient
     if (shareSessionEnabled && result.session) {
+        const clientForGist = gistClient ?? ghClient;
         try {
-            const shareResult = await shareSession(result.session, ghClient, `pi-action session for ${result.success ? "success" : "error"}: ${triggerInfo.issueTitle}`);
+            const shareResult = await shareSession(result.session, clientForGist, `pi-action session for ${result.success ? "success" : "error"}: ${triggerInfo.issueTitle}`);
             if (shareResult) {
                 shareUrl = shareResult.previewUrl;
                 log.info(`Session shared: ${shareUrl}`);
@@ -98,7 +100,7 @@ async function postResult(ghClient, triggerInfo, result, shareSessionEnabled, lo
     }
 }
 export async function run(deps) {
-    const { inputs, log, cwd } = deps;
+    const { inputs, log, cwd, createClient } = deps;
     setupAuth(inputs.piAuthJson);
     // Validate and extract trigger info
     const validated = validateTrigger(deps);
@@ -106,6 +108,10 @@ export async function run(deps) {
         return;
     }
     const { triggerInfo, ghClient } = validated;
+    // Create separate gist client if gist token is provided
+    const gistClient = inputs.gistToken
+        ? createClient(inputs.gistToken)
+        : undefined;
     // Add eyes reaction to acknowledge
     await addReaction(ghClient, triggerInfo, "eyes");
     // Build context
@@ -118,6 +124,6 @@ export async function run(deps) {
         logger: log,
         promptTemplate: inputs.promptTemplate,
     });
-    // Post result
-    await postResult(ghClient, triggerInfo, result, inputs.shareSession, log);
+    // Post result (use gistClient for session sharing if available)
+    await postResult(ghClient, gistClient, triggerInfo, result, inputs.shareSession, log);
 }

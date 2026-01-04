@@ -21,6 +21,7 @@ run({
             model: getInputOrDefault("model", DEFAULTS.model),
         },
         githubToken: core.getInput("github_token") || process.env.GITHUB_TOKEN,
+        gistToken: core.getInput("gist_token") || undefined,
         piAuthJson: core.getInput("pi_auth_json"),
         promptTemplate: core.getInput("prompt_template"),
         shareSession: getInputOrDefault("share_session", "true").toLowerCase() === "true",

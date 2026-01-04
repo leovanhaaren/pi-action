@@ -20,6 +20,7 @@ export interface ActionInputs {
 	allowedBots: string[];
 	modelConfig: ModelConfig;
 	githubToken: string | undefined;
+	gistToken: string | undefined;
 	piAuthJson: string | undefined;
 	promptTemplate: string | undefined;
 	shareSession: boolean;
@@ -132,6 +133,7 @@ async function buildPIContext(
  */
 async function postResult(
 	ghClient: GitHubClient,
+	gistClient: GitHubClient | undefined,
 	triggerInfo: TriggerInfo,
 	result:
 		| { success: true; response: string; session?: Session }
@@ -142,11 +144,13 @@ async function postResult(
 	let shareUrl: string | undefined;
 
 	// Try to share session if enabled and session exists
+	// Use gistClient if available, otherwise fall back to ghClient
 	if (shareSessionEnabled && result.session) {
+		const clientForGist = gistClient ?? ghClient;
 		try {
 			const shareResult = await shareSession(
 				result.session,
-				ghClient,
+				clientForGist,
 				`pi-action session for ${result.success ? "success" : "error"}: ${triggerInfo.issueTitle}`,
 			);
 			if (shareResult) {
@@ -175,7 +179,7 @@ async function postResult(
 }
 
 export async function run(deps: ActionDependencies): Promise<void> {
-	const { inputs, log, cwd } = deps;
+	const { inputs, log, cwd, createClient } = deps;
 
 	setupAuth(inputs.piAuthJson);
 
@@ -186,6 +190,11 @@ export async function run(deps: ActionDependencies): Promise<void> {
 	}
 
 	const { triggerInfo, ghClient } = validated;
+
+	// Create separate gist client if gist token is provided
+	const gistClient = inputs.gistToken
+		? createClient(inputs.gistToken)
+		: undefined;
 
 	// Add eyes reaction to acknowledge
 	await addReaction(ghClient, triggerInfo, "eyes");
@@ -207,6 +216,13 @@ export async function run(deps: ActionDependencies): Promise<void> {
 		promptTemplate: inputs.promptTemplate,
 	});
 
-	// Post result
-	await postResult(ghClient, triggerInfo, result, inputs.shareSession, log);
+	// Post result (use gistClient for session sharing if available)
+	await postResult(
+		ghClient,
+		gistClient,
+		triggerInfo,
+		result,
+		inputs.shareSession,
+		log,
+	);
 }

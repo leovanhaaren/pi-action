@@ -5,6 +5,7 @@ export interface ActionInputs {
     allowedBots: string[];
     modelConfig: ModelConfig;
     githubToken: string | undefined;
+    gistToken: string | undefined;
     piAuthJson: string | undefined;
     promptTemplate: string | undefined;
     shareSession: boolean;

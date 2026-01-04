@@ -72,6 +72,7 @@ describe("run", () => {
 				allowedBots: [],
 				modelConfig: createModelConfig(),
 				githubToken: "test-token",
+				gistToken: undefined,
 				piAuthJson: undefined,
 				promptTemplate: undefined,
 				shareSession: true,

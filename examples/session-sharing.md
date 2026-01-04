@@ -58,15 +58,18 @@ To disable session sharing:
 
 ## Token Requirements
 
-**Important:** The default `GITHUB_TOKEN` does not have permission to create gists. To enable session sharing, you need to use a Personal Access Token (PAT) with the `gist` scope:
+**Important:** The default `GITHUB_TOKEN` does not have permission to create gists. To enable session sharing, provide a separate Personal Access Token (PAT) with the `gist` scope via the `gist_token` input:
 
 ```yaml
 - uses: cv/pi-action@v1
   with:
-    github_token: ${{ secrets.PAT_WITH_GIST_SCOPE }}  # PAT with gist scope
+    github_token: ${{ secrets.GITHUB_TOKEN }}  # For issues, PRs, reactions
+    gist_token: ${{ secrets.PAT_WITH_GIST_SCOPE }}  # PAT with gist scope only
     pi_auth_json: ${{ secrets.PI_AUTH_JSON }}
     share_session: true
 ```
+
+This separation follows the principle of least privilege - the PAT only needs `gist` scope, not full repo access.
 
 If gist creation fails (e.g., due to missing permissions), the action will gracefully continue and post the response without a session link. This ensures the action never fails due to session sharing issues.
 
