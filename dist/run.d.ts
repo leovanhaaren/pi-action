@@ -1,4 +1,5 @@
 import { type GitHubClient } from "./github.js";
+import { RateLimiter } from "./security.js";
 import type { ModelConfig, RepoRef } from "./types.js";
 export interface ActionInputs {
     triggerPhrase: string;
@@ -26,6 +27,7 @@ export interface ActionDependencies {
     createClient: (token: string) => GitHubClient;
     log: Logger;
     cwd: string;
+    rateLimiter?: RateLimiter;
 }
 export declare function setupAuth(piAuthJson: string | undefined): void;
 export declare function run(deps: ActionDependencies): Promise<void>;
