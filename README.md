@@ -182,6 +182,18 @@ To disable session sharing:
 
 Sessions are uploaded as **secret** (non-public) GitHub gists and are accessible via a viewer at `https://shittycodingagent.ai/session?<gist_id>`.
 
+**Note:** The default `GITHUB_TOKEN` does not have permission to create gists. To enable session sharing, you need to use a Personal Access Token (PAT) with the `gist` scope:
+
+```yaml
+- uses: cv/pi-action@v1
+  with:
+    github_token: ${{ secrets.PAT_WITH_GIST_SCOPE }}  # PAT with gist scope
+    pi_auth_json: ${{ secrets.PI_AUTH_JSON }}
+    share_session: true
+```
+
+If gist creation fails (e.g., due to missing permissions), the action will gracefully continue and post the response without a session link.
+
 #### Comments only (no issue/PR creation triggers)
 
 If you only want to trigger on comments, not when issues/PRs are created:

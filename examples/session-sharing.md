@@ -55,7 +55,20 @@ To disable session sharing:
 - Sessions are uploaded as **secret** (non-public) GitHub gists
 - Only people with the direct link can access the session
 - Sessions include the same information that would be in your repository anyway
-- No additional authentication tokens are required - uses the same `github_token`
+
+## Token Requirements
+
+**Important:** The default `GITHUB_TOKEN` does not have permission to create gists. To enable session sharing, you need to use a Personal Access Token (PAT) with the `gist` scope:
+
+```yaml
+- uses: cv/pi-action@v1
+  with:
+    github_token: ${{ secrets.PAT_WITH_GIST_SCOPE }}  # PAT with gist scope
+    pi_auth_json: ${{ secrets.PI_AUTH_JSON }}
+    share_session: true
+```
+
+If gist creation fails (e.g., due to missing permissions), the action will gracefully continue and post the response without a session link. This ensures the action never fails due to session sharing issues.
 
 ## Use Cases
 
