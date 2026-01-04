@@ -10,5 +10,6 @@ export interface AgentConfig {
     timeout: number;
     cwd: string;
     logger?: AgentLogger;
+    promptTemplate?: string;
 }
 export declare function runAgent(piContext: PIContext, config: AgentConfig, authStorage?: AuthStorage, modelRegistry?: ModelRegistry): Promise<AgentResult>;

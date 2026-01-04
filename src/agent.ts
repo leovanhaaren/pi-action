@@ -23,6 +23,7 @@ export interface AgentConfig {
 	timeout: number;
 	cwd: string;
 	logger?: AgentLogger;
+	promptTemplate?: string;
 }
 
 export async function runAgent(
@@ -31,7 +32,7 @@ export async function runAgent(
 	authStorage?: AuthStorage,
 	modelRegistry?: ModelRegistry,
 ): Promise<AgentResult> {
-	const prompt = buildPrompt(piContext);
+	const prompt = buildPrompt(piContext, config.promptTemplate);
 
 	// Use provided or discover auth/models
 	const auth = authStorage ?? discoverAuthStorage();

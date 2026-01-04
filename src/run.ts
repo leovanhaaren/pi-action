@@ -22,6 +22,7 @@ export interface ActionInputs {
 	model: string;
 	githubToken: string | undefined;
 	piAuthJson: string | undefined;
+	promptTemplate: string | undefined;
 }
 
 export interface ActionContext {
@@ -123,6 +124,7 @@ export async function run(deps: ActionDependencies): Promise<void> {
 		timeout: inputs.timeout,
 		cwd,
 		logger: log,
+		promptTemplate: inputs.promptTemplate,
 	});
 
 	if (result.success) {

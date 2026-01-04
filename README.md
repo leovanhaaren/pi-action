@@ -77,6 +77,7 @@ Alternatively, you can set provider-specific environment variables (e.g., `ANTHR
 | `timeout` | Execution timeout in seconds | No | `300` |
 | `provider` | LLM provider (anthropic, openai, google, etc.) | No | `anthropic` |
 | `model` | Model ID | No | `claude-sonnet-4-20250514` |
+| `prompt_template` | Custom prompt template with placeholder variables | No | - |
 
 ### Examples
 
@@ -107,6 +108,46 @@ Alternatively, you can set provider-specific environment variables (e.g., `ANTHR
     github_token: ${{ secrets.GITHUB_TOKEN }}
     trigger_phrase: '@assistant'
 ```
+
+#### Custom Prompt Template
+
+Customize how GitHub issue/PR context is presented to the pi agent:
+
+```yaml
+- uses: cv/pi-action@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    prompt_template: |
+      # Code Review for {{type_display}} #{{number}}
+      
+      **Title:** {{title}}
+      **Task:** {{task}}
+      
+      ## Description
+      {{body}}
+      
+      ## Changes
+      ```diff
+      {{diff}}
+      ```
+      
+      ## Review Guidelines
+      - Check for security vulnerabilities
+      - Verify test coverage
+      - Follow our coding standards
+```
+
+**Template Variables:**
+- `{{type}}` - Context type (`issue` or `pull_request`)
+- `{{type_display}}` - Human-readable type (`Issue` or `Pull Request`)
+- `{{number}}` - Issue/PR number
+- `{{title}}` - Issue/PR title
+- `{{body}}` - Issue/PR description
+- `{{task}}` - Extracted task (text after trigger phrase)
+- `{{diff}}` - PR diff (empty for issues)
+- `{{trigger_comment}}` - Full trigger comment text
+
+See [examples/prompt-templates.md](examples/prompt-templates.md) for more template examples.
 
 #### Comments only (no issue/PR creation triggers)
 

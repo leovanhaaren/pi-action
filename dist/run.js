@@ -68,6 +68,7 @@ export async function run(deps) {
         timeout: inputs.timeout,
         cwd,
         logger: log,
+        promptTemplate: inputs.promptTemplate,
     });
     if (result.success) {
         await addReaction(ghClient, triggerInfo, "rocket");
