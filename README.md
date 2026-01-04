@@ -8,6 +8,7 @@ A GitHub Action that invokes the [PI coding agent](https://github.com/mariozechn
 - 🔒 Security-first: Only allows repo owners, members, and collaborators
 - 🤝 Bot allowlist for automation workflows
 - 📝 Works on both issues and pull requests
+- 🆕 Trigger on issue/PR creation, not just comments
 - 🔀 Automatically includes PR diffs for code review tasks
 
 ## Usage
@@ -20,6 +21,10 @@ Create `.github/workflows/pi-assistant.yml`:
 name: PI Assistant
 
 on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -27,7 +32,7 @@ on:
 
 jobs:
   pi-response:
-    if: contains(github.event.comment.body, '@pi')
+    if: contains(github.event.comment.body || github.event.issue.body || github.event.pull_request.body || '', '@pi')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -104,12 +109,28 @@ Alternatively, you can set provider-specific environment variables (e.g., `ANTHR
     trigger_phrase: '@assistant'
 ```
 
+#### Comments only (no issue/PR creation triggers)
+
+If you only want to trigger on comments, not when issues/PRs are created:
+
+```yaml
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  pi-response:
+    if: contains(github.event.comment.body, '@pi')
+```
+
 ## How It Works
 
-1. When a comment containing the trigger phrase is posted on an issue or PR, the action is triggered
-2. The action validates that the comment author has write access to the repository
+1. When a comment or issue/PR containing the trigger phrase is posted, the action is triggered
+2. The action validates that the author has write access to the repository
 3. An 👀 reaction is added to acknowledge the request
-4. PI is invoked with the issue/PR context and the task from the comment
+4. PI is invoked with the issue/PR context and the task from the trigger
 5. The response is posted as a new comment with a 🚀 reaction
 
 ## Security
