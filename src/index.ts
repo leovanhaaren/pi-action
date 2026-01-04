@@ -33,30 +33,46 @@ async function run(): Promise<void> {
 
 	const { context } = github;
 	const { payload } = context;
-	const comment = payload.comment;
 
-	if (!comment) {
-		core.info("No comment in payload, skipping");
+	// Determine if this is a comment event or an opened event
+	const comment = payload.comment;
+	const issue = payload.issue || payload.pull_request;
+
+	if (!issue) {
+		core.info("No issue or pull_request in payload, skipping");
+		return;
+	}
+
+	// Get the trigger text and author info based on event type
+	const isCommentEvent = !!comment;
+	const triggerText = isCommentEvent ? comment.body : issue.body;
+	const author = isCommentEvent ? comment.user : issue.user;
+	const authorAssociation = isCommentEvent
+		? comment.author_association
+		: issue.author_association;
+
+	if (!triggerText) {
+		core.info("No trigger text found, skipping");
 		return;
 	}
 
 	// Check if trigger phrase is present
-	if (!hasTrigger(comment.body, triggerPhrase)) {
+	if (!hasTrigger(triggerText, triggerPhrase)) {
 		core.info(`No trigger phrase "${triggerPhrase}" found, skipping`);
 		return;
 	}
 
 	// Validate permissions
 	const securityContext: SecurityContext = {
-		authorAssociation: comment.author_association,
-		authorLogin: comment.user.login,
-		isBot: comment.user.type === "Bot",
+		authorAssociation: authorAssociation,
+		authorLogin: author.login,
+		isBot: author.type === "Bot",
 		allowedBots,
 	};
 
 	if (!validatePermissions(securityContext)) {
 		core.warning(
-			`User ${comment.user.login} (${comment.author_association}) does not have permission`,
+			`User ${author.login} (${authorAssociation}) does not have permission`,
 		);
 		return;
 	}
@@ -68,22 +84,25 @@ async function run(): Promise<void> {
 	}
 	const octokit = github.getOctokit(token);
 
-	// Add eyes reaction to acknowledge
-	const issue = payload.issue || payload.pull_request;
-	if (!issue) {
-		core.info("No issue or pull_request in payload, skipping");
-		return;
+	// Add eyes reaction to acknowledge - different API for comments vs issues
+	if (isCommentEvent) {
+		await octokit.rest.reactions.createForIssueComment({
+			owner: context.repo.owner,
+			repo: context.repo.repo,
+			comment_id: comment.id,
+			content: "eyes",
+		});
+	} else {
+		await octokit.rest.reactions.createForIssue({
+			owner: context.repo.owner,
+			repo: context.repo.repo,
+			issue_number: issue.number,
+			content: "eyes",
+		});
 	}
 
-	await octokit.rest.reactions.createForIssueComment({
-		owner: context.repo.owner,
-		repo: context.repo.repo,
-		comment_id: comment.id,
-		content: "eyes",
-	});
-
 	// Build context
-	const sanitizedBody = sanitizeInput(comment.body);
+	const sanitizedBody = sanitizeInput(triggerText);
 	const task = extractTask(sanitizedBody, triggerPhrase);
 
 	const piContext: PIContext = {
@@ -128,12 +147,22 @@ async function run(): Promise<void> {
 			error instanceof Error ? error.message : "Unknown error";
 		core.error(`PI execution failed: ${errorMessage}`);
 
-		await octokit.rest.reactions.createForIssueComment({
-			owner: context.repo.owner,
-			repo: context.repo.repo,
-			comment_id: comment.id,
-			content: "confused",
-		});
+		// Add confused reaction - different API for comments vs issues
+		if (isCommentEvent) {
+			await octokit.rest.reactions.createForIssueComment({
+				owner: context.repo.owner,
+				repo: context.repo.repo,
+				comment_id: comment.id,
+				content: "confused",
+			});
+		} else {
+			await octokit.rest.reactions.createForIssue({
+				owner: context.repo.owner,
+				repo: context.repo.repo,
+				issue_number: issue.number,
+				content: "confused",
+			});
+		}
 
 		await octokit.rest.issues.createComment({
 			owner: context.repo.owner,
@@ -150,13 +179,22 @@ async function run(): Promise<void> {
 		}
 	}
 
-	// Post response
-	await octokit.rest.reactions.createForIssueComment({
-		owner: context.repo.owner,
-		repo: context.repo.repo,
-		comment_id: comment.id,
-		content: "rocket",
-	});
+	// Post response with rocket reaction - different API for comments vs issues
+	if (isCommentEvent) {
+		await octokit.rest.reactions.createForIssueComment({
+			owner: context.repo.owner,
+			repo: context.repo.repo,
+			comment_id: comment.id,
+			content: "rocket",
+		});
+	} else {
+		await octokit.rest.reactions.createForIssue({
+			owner: context.repo.owner,
+			repo: context.repo.repo,
+			issue_number: issue.number,
+			content: "rocket",
+		});
+	}
 
 	await octokit.rest.issues.createComment({
 		owner: context.repo.owner,

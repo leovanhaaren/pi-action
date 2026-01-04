@@ -23959,23 +23959,32 @@ async function run() {
   const { context } = github;
   const { payload } = context;
   const comment = payload.comment;
-  if (!comment) {
-    core.info("No comment in payload, skipping");
+  const issue = payload.issue || payload.pull_request;
+  if (!issue) {
+    core.info("No issue or pull_request in payload, skipping");
     return;
   }
-  if (!hasTrigger(comment.body, triggerPhrase)) {
+  const isCommentEvent = !!comment;
+  const triggerText = isCommentEvent ? comment.body : issue.body;
+  const author = isCommentEvent ? comment.user : issue.user;
+  const authorAssociation = isCommentEvent ? comment.author_association : issue.author_association;
+  if (!triggerText) {
+    core.info("No trigger text found, skipping");
+    return;
+  }
+  if (!hasTrigger(triggerText, triggerPhrase)) {
     core.info(`No trigger phrase "${triggerPhrase}" found, skipping`);
     return;
   }
   const securityContext = {
-    authorAssociation: comment.author_association,
-    authorLogin: comment.user.login,
-    isBot: comment.user.type === "Bot",
+    authorAssociation,
+    authorLogin: author.login,
+    isBot: author.type === "Bot",
     allowedBots
   };
   if (!validatePermissions(securityContext)) {
     core.warning(
-      `User ${comment.user.login} (${comment.author_association}) does not have permission`
+      `User ${author.login} (${authorAssociation}) does not have permission`
     );
     return;
   }
@@ -23985,18 +23994,22 @@ async function run() {
     return;
   }
   const octokit = github.getOctokit(token);
-  const issue = payload.issue || payload.pull_request;
-  if (!issue) {
-    core.info("No issue or pull_request in payload, skipping");
-    return;
+  if (isCommentEvent) {
+    await octokit.rest.reactions.createForIssueComment({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      comment_id: comment.id,
+      content: "eyes"
+    });
+  } else {
+    await octokit.rest.reactions.createForIssue({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      issue_number: issue.number,
+      content: "eyes"
+    });
   }
-  await octokit.rest.reactions.createForIssueComment({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    comment_id: comment.id,
-    content: "eyes"
-  });
-  const sanitizedBody = sanitizeInput(comment.body);
+  const sanitizedBody = sanitizeInput(triggerText);
   const task = extractTask(sanitizedBody, triggerPhrase);
   const piContext = {
     type: payload.pull_request ? "pull_request" : "issue",
@@ -24032,12 +24045,21 @@ ${prompt}`);
   } catch (error2) {
     const errorMessage = error2 instanceof Error ? error2.message : "Unknown error";
     core.error(`PI execution failed: ${errorMessage}`);
-    await octokit.rest.reactions.createForIssueComment({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      comment_id: comment.id,
-      content: "confused"
-    });
+    if (isCommentEvent) {
+      await octokit.rest.reactions.createForIssueComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        comment_id: comment.id,
+        content: "confused"
+      });
+    } else {
+      await octokit.rest.reactions.createForIssue({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: issue.number,
+        content: "confused"
+      });
+    }
     await octokit.rest.issues.createComment({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -24053,12 +24075,21 @@ Failed to process request: ${errorMessage}`
     } catch {
     }
   }
-  await octokit.rest.reactions.createForIssueComment({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    comment_id: comment.id,
-    content: "rocket"
-  });
+  if (isCommentEvent) {
+    await octokit.rest.reactions.createForIssueComment({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      comment_id: comment.id,
+      content: "rocket"
+    });
+  } else {
+    await octokit.rest.reactions.createForIssue({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      issue_number: issue.number,
+      content: "rocket"
+    });
+  }
   await octokit.rest.issues.createComment({
     owner: context.repo.owner,
     repo: context.repo.repo,
