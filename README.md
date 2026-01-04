@@ -129,7 +129,7 @@ jobs:
 1. When a comment or issue/PR containing the trigger phrase is posted, the action is triggered
 2. The action validates that the author has write access to the repository
 3. An 👀 reaction is added to acknowledge the request
-4. **Git hooks are installed** in the target repository (husky + commitlint) to enforce commit conventions
+4. **Git hooks are installed** in the target repository (standalone shell scripts) to enforce commit conventions
 5. The pi SDK is invoked with the issue/PR context and the task from the trigger
 6. The response is posted as a new comment with a 🚀 reaction
 
@@ -157,72 +157,9 @@ Input is sanitized to remove:
 - HTML comments (potential injection vectors)
 - Invisible Unicode characters
 
-## Development
+## Contributing
 
-```bash
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Run tests with coverage
-npm test -- --coverage
-
-# Build
-npm run build
-
-# Type check
-npm run typecheck
-
-# Lint and format
-npm run check
-```
-
-### Git Hooks
-
-This project uses [Husky](https://typicode.github.io/husky/) to enforce quality checks via git hooks:
-
-| Hook | What it does |
-|------|--------------|
-| **pre-commit** | Runs tests, type checking, linting, builds, and verifies `dist/` is up to date |
-| **commit-msg** | Enforces [Conventional Commits](https://www.conventionalcommits.org/) format |
-| **prepare-commit-msg** | Auto-appends issue number from branch name (e.g., `feat/123-description` → `Refs #123`) |
-| **pre-push** | Runs full test suite with coverage thresholds (80% lines/functions, 70% branches) |
-
-#### Commit Message Format
-
-Commits must follow the conventional commits format:
-
-```
-type(scope?): subject
-
-body?
-
-footer?
-```
-
-Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
-
-Examples:
-```bash
-git commit -m "feat: add webhook support"
-git commit -m "fix: handle empty response from API"
-git commit -m "docs: update installation instructions"
-```
-
-### Architecture
-
-The action is built with TypeScript and uses the pi-coding-agent SDK directly:
-
-- `src/index.ts` - Entry point, wires up dependencies
-- `src/run.ts` - Main orchestration logic
-- `src/agent.ts` - pi SDK integration
-- `src/github.ts` - GitHub API helpers
-- `src/context.ts` - Prompt building
-- `src/security.ts` - Permission validation and input sanitization
-
-All business logic has 100% test coverage (88% overall including the entry point).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, architecture details, and contribution guidelines.
 
 ## License
 
