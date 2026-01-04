@@ -37,14 +37,14 @@ npm run check
 
 ## Git Hooks
 
-This project uses [Husky](https://typicode.github.io/husky/) to enforce quality checks via git hooks. Hooks are automatically installed when you run `npm install`.
+This project uses [Husky](https://typicode.github.io/husky/) to enforce quality checks via git hooks. Hooks are automatically installed when you run `npm install`. See the [`.husky/`](.husky/) directory for hook scripts.
 
 | Hook | What it does |
 |------|--------------|
-| **pre-commit** | Runs tests, type checking, linting, builds, and verifies `dist/` is up to date |
-| **commit-msg** | Enforces [Conventional Commits](https://www.conventionalcommits.org/) format via commitlint |
-| **prepare-commit-msg** | Auto-appends issue number from branch name (e.g., `feat/123-description` → `Refs #123`) |
-| **pre-push** | Runs full test suite with coverage thresholds (80% lines/functions, 70% branches) |
+| [**pre-commit**](.husky/pre-commit) | Runs tests, type checking, linting, builds, and verifies `dist/` is up to date |
+| [**commit-msg**](.husky/commit-msg) | Enforces [Conventional Commits](https://www.conventionalcommits.org/) format via commitlint |
+| [**prepare-commit-msg**](.husky/prepare-commit-msg) | Auto-appends issue number from branch name (e.g., `feat/123-description` → `Refs #123`) |
+| [**pre-push**](.husky/pre-push) | Runs full test suite with coverage thresholds (80% lines/functions, 70% branches) |
 
 ### Commit Message Format
 
@@ -77,26 +77,26 @@ The action is built with TypeScript and uses the [pi-coding-agent SDK](https://g
 
 ### Source Files
 
-```
-src/
-├── index.ts          # Entry point - wires up dependencies and runs the action
-├── run.ts            # Main orchestration logic
-├── agent.ts          # pi SDK integration
-├── github.ts         # GitHub API client helpers
-├── context.ts        # Prompt building and trigger extraction
-├── security.ts       # Permission validation and input sanitization
-├── formatting.ts     # Response formatting utilities
-├── types.ts          # TypeScript type definitions
-├── utils.ts          # General utility functions
-└── test-helpers.ts   # Shared test utilities
-```
+| File | Description |
+|------|-------------|
+| [`src/index.ts`](src/index.ts) | Entry point - wires up dependencies and runs the action |
+| [`src/run.ts`](src/run.ts) | Main orchestration logic |
+| [`src/agent.ts`](src/agent.ts) | pi SDK integration |
+| [`src/github.ts`](src/github.ts) | GitHub API client helpers |
+| [`src/context.ts`](src/context.ts) | Prompt building and trigger extraction |
+| [`src/security.ts`](src/security.ts) | Permission validation and input sanitization |
+| [`src/formatting.ts`](src/formatting.ts) | Response formatting utilities |
+| [`src/types.ts`](src/types.ts) | TypeScript type definitions |
+| [`src/defaults.ts`](src/defaults.ts) | Centralized default values |
+| [`src/utils.ts`](src/utils.ts) | General utility functions |
+| [`src/test-helpers.ts`](src/test-helpers.ts) | Shared test utilities |
 
 ### Key Components
 
-#### `index.ts`
+#### [`index.ts`](src/index.ts)
 Entry point that reads GitHub Actions inputs, creates dependencies, and invokes `run()`. This is the only file with side effects (reading environment, calling APIs).
 
-#### `run.ts`
+#### [`run.ts`](src/run.ts)
 Main orchestration that:
 1. Sets up authentication from `PI_AUTH_JSON`
 2. Extracts trigger information from the GitHub payload
@@ -105,38 +105,39 @@ Main orchestration that:
 5. Runs the agent
 6. Posts results as comments
 
-#### `agent.ts`
+#### [`agent.ts`](src/agent.ts)
 Wraps the pi SDK to:
 - Discover or use provided auth/model registry
 - Create an agent session with appropriate settings
 - Subscribe to streaming responses
-- Handle timeouts
+- Handle timeouts (using [`withTimeout`](src/utils.ts) utility)
 - Return success/error results
 
-#### `github.ts`
+#### [`github.ts`](src/github.ts)
 Provides a clean interface to GitHub APIs:
 - `extractTriggerInfo()`: Parses GitHub webhook payloads
 - `GitHubClient`: Interface for reactions, comments, and PR diffs
 - `addReaction()`: Helper to add reactions to comments or issues
 
-#### `context.ts`
+#### [`context.ts`](src/context.ts)
 Handles prompt construction:
 - `hasTrigger()`: Checks if text contains the trigger phrase
 - `extractTask()`: Extracts the task from trigger text
 - `buildPrompt()`: Constructs the full prompt with context
+- `renderTemplate()`: Renders custom prompt templates
 
-#### `security.ts`
+#### [`security.ts`](src/security.ts)
 Permission and input validation:
 - `validatePermissions()`: Checks if user has write access or is an allowed bot
 - `sanitizeInput()`: Removes HTML comments and invisible Unicode characters
 
 ### Action Configuration
 
-The `action.yml` file defines:
+The [`action.yml`](action.yml) file defines:
 - Input parameters
 - A composite action that:
   1. Installs npm dependencies
-  2. Installs standalone git hooks for conventional commits
+  2. Installs standalone git hooks for conventional commits (see [lines 44-107](action.yml#L44-L107))
   3. Runs the compiled TypeScript via Node.js
 
 ### Testing
@@ -154,7 +155,7 @@ npm test -- --coverage      # With coverage report
 - All business logic has near-100% test coverage
 - Tests use dependency injection for easy mocking
 - Mock the pi SDK to test agent integration without real API calls
-- Use `test-helpers.ts` for common mock factories
+- Use [`test-helpers.ts`](src/test-helpers.ts) for common mock factories
 
 **Coverage thresholds (enforced by pre-push hook):**
 - Lines: 80%
@@ -175,8 +176,8 @@ This compiles TypeScript to `dist/`. The `dist/` directory is committed to the r
 
 ### GitHub Actions Workflows
 
-- **CI (`ci.yml`)**: Runs on push/PR to main - type checking, linting, tests, build verification
-- **pi Assistant (`pi-assistant.yml`)**: Dogfooding - uses the action from this repo to respond to `@pi` triggers
+- [**CI (`ci.yml`)**](.github/workflows/ci.yml): Runs on push/PR to main - type checking, linting, tests, build verification
+- [**pi Assistant (`pi-assistant.yml`)**](.github/workflows/pi-assistant.yml): Dogfooding - uses the action from this repo to respond to `@pi` triggers
 
 ### Release Process
 
@@ -187,11 +188,11 @@ This compiles TypeScript to `dist/`. The `dist/` directory is committed to the r
 
 ## Code Style
 
-- TypeScript with strict mode
-- [Biome](https://biomejs.dev/) for formatting and linting
-- No semicolons, tabs for indentation (configured in `biome.json`)
+- TypeScript with strict mode (see [`tsconfig.json`](tsconfig.json))
+- [Biome](https://biomejs.dev/) for formatting and linting (see [`biome.json`](biome.json))
+- No semicolons, tabs for indentation
 - Prefer explicit types over inference for function signatures
-- Use discriminated unions for result types (see `AgentResult` in `types.ts`)
+- Use discriminated unions for result types (see [`AgentResult` in `types.ts`](src/types.ts))
 
 ## Pull Request Guidelines
 
