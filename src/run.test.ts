@@ -494,4 +494,183 @@ describe("run", () => {
 			"### 🤖 pi Response\n\nTask completed!",
 		);
 	});
+
+	it("shares session on error response when session is available", async () => {
+		const mockClient = createMockGitHubClient();
+		const mockSession = { exportToHtml: vi.fn() };
+
+		// Mock shareSession to return a result
+		vi.mocked(shareSession).mockResolvedValue({
+			gistUrl: "https://gist.github.com/user/error123",
+			previewUrl: "https://shittycodingagent.ai/session?error123",
+		});
+
+		const deps = createMockDeps({
+			context: {
+				payload: {
+					issue: {
+						number: 1,
+						title: "Test Issue",
+						body: "@pi test task",
+						user: { login: "user", type: "User" },
+						author_association: "OWNER",
+					},
+				},
+				repo: createRepoRef(),
+			},
+			createClient: vi.fn(() => mockClient),
+			inputs: {
+				...createMockDeps().inputs,
+				shareSession: true,
+			},
+		});
+
+		vi.mocked(runAgent).mockResolvedValue({
+			success: false,
+			error: "Something went wrong",
+			session: mockSession,
+		});
+
+		await run(deps);
+
+		// Check that error comment includes session link
+		expect(mockClient.createComment).toHaveBeenCalledWith(
+			1,
+			expect.stringContaining(
+				"📎 [View full session](https://shittycodingagent.ai/session?error123)",
+			),
+		);
+		expect(mockClient.createComment).toHaveBeenCalledWith(
+			1,
+			expect.stringContaining("### ❌ pi Error"),
+		);
+	});
+
+	it("posts response without session link when sharing fails", async () => {
+		const mockClient = createMockGitHubClient();
+		const mockSession = { exportToHtml: vi.fn() };
+
+		// Mock shareSession to return null (failure)
+		vi.mocked(shareSession).mockResolvedValue(null);
+
+		const deps = createMockDeps({
+			context: {
+				payload: {
+					issue: {
+						number: 1,
+						title: "Test Issue",
+						body: "@pi test task",
+						user: { login: "user", type: "User" },
+						author_association: "OWNER",
+					},
+				},
+				repo: createRepoRef(),
+			},
+			createClient: vi.fn(() => mockClient),
+			inputs: {
+				...createMockDeps().inputs,
+				shareSession: true,
+			},
+		});
+
+		vi.mocked(runAgent).mockResolvedValue({
+			success: true,
+			response: "Task completed!",
+			session: mockSession,
+		});
+
+		await run(deps);
+
+		// Should still post the response without session link
+		expect(mockClient.createComment).toHaveBeenCalledWith(
+			1,
+			"### 🤖 pi Response\n\nTask completed!",
+		);
+	});
+
+	it("posts response without session link when no session is returned", async () => {
+		const mockClient = createMockGitHubClient();
+
+		const deps = createMockDeps({
+			context: {
+				payload: {
+					issue: {
+						number: 1,
+						title: "Test Issue",
+						body: "@pi test task",
+						user: { login: "user", type: "User" },
+						author_association: "OWNER",
+					},
+				},
+				repo: createRepoRef(),
+			},
+			createClient: vi.fn(() => mockClient),
+			inputs: {
+				...createMockDeps().inputs,
+				shareSession: true,
+			},
+		});
+
+		// No session returned (undefined)
+		vi.mocked(runAgent).mockResolvedValue({
+			success: true,
+			response: "Task completed!",
+		});
+
+		await run(deps);
+
+		// shareSession should not be called when no session
+		expect(shareSession).not.toHaveBeenCalled();
+		// Should still post the response without session link
+		expect(mockClient.createComment).toHaveBeenCalledWith(
+			1,
+			"### 🤖 pi Response\n\nTask completed!",
+		);
+	});
+
+	it("logs warning when session sharing throws", async () => {
+		const mockClient = createMockGitHubClient();
+		const mockSession = { exportToHtml: vi.fn() };
+
+		// Mock shareSession to throw an error
+		vi.mocked(shareSession).mockRejectedValue(new Error("Gist API error"));
+
+		const deps = createMockDeps({
+			context: {
+				payload: {
+					issue: {
+						number: 1,
+						title: "Test Issue",
+						body: "@pi test task",
+						user: { login: "user", type: "User" },
+						author_association: "OWNER",
+					},
+				},
+				repo: createRepoRef(),
+			},
+			createClient: vi.fn(() => mockClient),
+			inputs: {
+				...createMockDeps().inputs,
+				shareSession: true,
+			},
+		});
+
+		vi.mocked(runAgent).mockResolvedValue({
+			success: true,
+			response: "Task completed!",
+			session: mockSession,
+		});
+
+		await run(deps);
+
+		// Should log warning
+		expect(deps.log.warning).toHaveBeenCalledWith(
+			expect.stringContaining("Failed to share session"),
+		);
+		// Should still post the response without session link
+		expect(mockClient.createComment).toHaveBeenCalledWith(
+			1,
+			"### 🤖 pi Response\n\nTask completed!",
+		);
+	});
 });
