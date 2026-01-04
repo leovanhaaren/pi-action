@@ -122,6 +122,7 @@ export async function run(deps: ActionDependencies): Promise<void> {
 		model: inputs.model,
 		timeout: inputs.timeout,
 		cwd,
+		logger: log,
 	});
 
 	if (result.success) {
