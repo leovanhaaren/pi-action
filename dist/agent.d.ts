@@ -1,13 +1,10 @@
 import { type AuthStorage, type ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type { PIContext } from "./context.js";
-import type { AgentResult } from "./types.js";
+import type { AgentResult, ModelConfig } from "./types.js";
 export interface AgentLogger {
     info: (msg: string) => void;
 }
-export interface AgentConfig {
-    provider: string;
-    model: string;
-    timeout: number;
+export interface AgentConfig extends ModelConfig {
     cwd: string;
     logger?: AgentLogger;
     promptTemplate?: string;

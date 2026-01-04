@@ -1,6 +1,46 @@
 import { SessionManager, SettingsManager, createAgentSession, createCodingTools, discoverAuthStorage, discoverModels, } from "@mariozechner/pi-coding-agent";
 import { buildPrompt } from "./context.js";
-import { getErrorMessage } from "./utils.js";
+import { getErrorMessage, withTimeout } from "./utils.js";
+/**
+ * Creates a session event handler that logs tool executions and collects response text.
+ */
+function createSessionEventHandler(log, onTextDelta) {
+    return (event) => {
+        switch (event.type) {
+            case "turn_start":
+                log.info("🔄 Turn started");
+                break;
+            case "turn_end":
+                log.info("✅ Turn completed");
+                break;
+            case "tool_execution_start":
+                log.info(`🔧 Tool: ${event.toolName}`);
+                if (event.toolName === "bash" && event.args?.command) {
+                    log.info(`   $ ${event.args.command}`);
+                }
+                else if (event.toolName === "read" && event.args?.path) {
+                    log.info(`   📖 ${event.args.path}`);
+                }
+                else if (event.toolName === "write" && event.args?.path) {
+                    log.info(`   ✏️ ${event.args.path}`);
+                }
+                else if (event.toolName === "edit" && event.args?.path) {
+                    log.info(`   📝 ${event.args.path}`);
+                }
+                break;
+            case "tool_execution_end":
+                if (event.isError) {
+                    log.info(`   ❌ Tool error: ${event.toolName}`);
+                }
+                break;
+            case "message_update":
+                if (event.assistantMessageEvent?.type === "text_delta") {
+                    onTextDelta(event.assistantMessageEvent.delta ?? "");
+                }
+                break;
+        }
+    };
+}
 export async function runAgent(piContext, config, authStorage, modelRegistry) {
     const prompt = buildPrompt(piContext, config.promptTemplate);
     // Use provided or discover auth/models
@@ -36,60 +76,17 @@ export async function runAgent(piContext, config, authStorage, modelRegistry) {
             slashCommands: [],
         });
         const log = config.logger ?? { info: () => { } };
-        // Subscribe to collect response and log events
-        session.subscribe((event) => {
-            switch (event.type) {
-                case "turn_start":
-                    log.info("🔄 Turn started");
-                    break;
-                case "turn_end":
-                    log.info("✅ Turn completed");
-                    break;
-                case "tool_execution_start":
-                    log.info(`🔧 Tool: ${event.toolName}`);
-                    if (event.toolName === "bash" && event.args?.command) {
-                        log.info(`   $ ${event.args.command}`);
-                    }
-                    else if (event.toolName === "read" && event.args?.path) {
-                        log.info(`   📖 ${event.args.path}`);
-                    }
-                    else if (event.toolName === "write" && event.args?.path) {
-                        log.info(`   ✏️ ${event.args.path}`);
-                    }
-                    else if (event.toolName === "edit" && event.args?.path) {
-                        log.info(`   📝 ${event.args.path}`);
-                    }
-                    break;
-                case "tool_execution_end":
-                    if (event.isError) {
-                        log.info(`   ❌ Tool error: ${event.toolName}`);
-                    }
-                    break;
-                case "message_update":
-                    if (event.assistantMessageEvent.type === "text_delta") {
-                        response += event.assistantMessageEvent.delta;
-                    }
-                    break;
-            }
+        const eventHandler = createSessionEventHandler(log, (delta) => {
+            response += delta;
         });
-        // Create a timeout promise
-        const timeoutId = setTimeout(() => reject(new Error(`Timeout after ${config.timeout} seconds`)), config.timeout * 1000);
-        let reject;
-        const timeoutPromise = new Promise((_, rej) => {
-            reject = rej;
-        });
-        try {
-            // Run with timeout
-            await Promise.race([session.prompt(prompt), timeoutPromise]);
-            const trimmedResponse = response.trim();
-            if (!trimmedResponse) {
-                return { success: false, error: "Agent returned empty response" };
-            }
-            return { success: true, response: trimmedResponse };
+        session.subscribe(eventHandler);
+        // Run with timeout
+        await withTimeout(session.prompt(prompt), config.timeout * 1000, `Timeout after ${config.timeout} seconds`);
+        const trimmedResponse = response.trim();
+        if (!trimmedResponse) {
+            return { success: false, error: "Agent returned empty response" };
         }
-        finally {
-            clearTimeout(timeoutId);
-        }
+        return { success: true, response: trimmedResponse };
     }
     catch (error) {
         return { success: false, error: getErrorMessage(error) };

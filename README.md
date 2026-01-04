@@ -165,41 +165,6 @@ jobs:
     if: contains(github.event.comment.body, '@pi')
 ```
 
-#### Custom Prompt Template
-
-Customize how GitHub issue/PR context is presented to the agent:
-
-```yaml
-- uses: cv/pi-action@v1
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    prompt_template: |
-      # Task for {{type_display}} #{{number}}
-      
-      **Title:** {{title}}
-      
-      **Description:**
-      {{body}}
-      
-      **Your Task:**
-      {{task}}
-      
-      ## Guidelines
-      - Follow our coding standards
-      - Write tests for any new code
-      - Use conventional commits
-```
-
-**Available template variables:**
-- `{{type}}` - Context type (`issue` or `pull_request`)
-- `{{type_display}}` - Human-readable type (`Issue` or `Pull Request`)
-- `{{number}}` - Issue/PR number
-- `{{title}}` - Issue/PR title
-- `{{body}}` - Issue/PR description/body
-- `{{task}}` - Extracted task (text after trigger phrase)
-- `{{diff}}` - PR diff (empty string for issues)
-- `{{trigger_comment}}` - Full trigger comment text
-
 ## How It Works
 
 1. When a comment or issue/PR containing the trigger phrase is posted, the action is triggered

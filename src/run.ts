@@ -12,14 +12,12 @@ import {
 } from "./github.js";
 import { sanitizeInput, validatePermissions } from "./security.js";
 import type { SecurityContext } from "./security.js";
-import { getErrorMessage } from "./utils.js";
+import type { ModelConfig, RepoRef, TriggerInfo } from "./types.js";
 
 export interface ActionInputs {
 	triggerPhrase: string;
 	allowedBots: string[];
-	timeout: number;
-	provider: string;
-	model: string;
+	modelConfig: ModelConfig;
 	githubToken: string | undefined;
 	piAuthJson: string | undefined;
 	promptTemplate: string | undefined;
@@ -27,22 +25,21 @@ export interface ActionInputs {
 
 export interface ActionContext {
 	payload: Record<string, unknown>;
-	repo: {
-		owner: string;
-		repo: string;
-	};
+	repo: RepoRef;
+}
+
+export interface Logger {
+	info: (msg: string) => void;
+	warning: (msg: string) => void;
+	error: (msg: string) => void;
+	setFailed: (msg: string) => void;
 }
 
 export interface ActionDependencies {
 	inputs: ActionInputs;
 	context: ActionContext;
 	createClient: (token: string) => GitHubClient;
-	log: {
-		info: (msg: string) => void;
-		warning: (msg: string) => void;
-		error: (msg: string) => void;
-		setFailed: (msg: string) => void;
-	};
+	log: Logger;
 	cwd: string;
 }
 
@@ -54,22 +51,26 @@ export function setupAuth(piAuthJson: string | undefined): void {
 	}
 }
 
-export async function run(deps: ActionDependencies): Promise<void> {
-	const { inputs, context, createClient, log, cwd } = deps;
-
-	setupAuth(inputs.piAuthJson);
+/**
+ * Validates that the trigger is authorized to run the agent.
+ * Returns the trigger info if valid, null otherwise.
+ */
+function validateTrigger(
+	deps: ActionDependencies,
+): { triggerInfo: TriggerInfo; ghClient: GitHubClient } | null {
+	const { inputs, context, createClient, log } = deps;
 
 	// Extract trigger info from payload
 	const triggerInfo = extractTriggerInfo(context.payload);
 	if (!triggerInfo) {
 		log.info("No issue or pull_request in payload, skipping");
-		return;
+		return null;
 	}
 
 	// Check if trigger phrase is present
 	if (!hasTrigger(triggerInfo.triggerText, inputs.triggerPhrase)) {
 		log.info(`No trigger phrase "${inputs.triggerPhrase}" found, skipping`);
-		return;
+		return null;
 	}
 
 	// Validate permissions
@@ -84,22 +85,28 @@ export async function run(deps: ActionDependencies): Promise<void> {
 		log.warning(
 			`User ${triggerInfo.author.login} (${triggerInfo.authorAssociation}) does not have permission`,
 		);
-		return;
+		return null;
 	}
 
 	if (!inputs.githubToken) {
 		log.setFailed("github_token is required");
-		return;
+		return null;
 	}
 
 	const ghClient = createClient(inputs.githubToken);
+	return { triggerInfo, ghClient };
+}
 
-	// Add eyes reaction to acknowledge
-	await addReaction(ghClient, triggerInfo, "eyes");
-
-	// Build context
+/**
+ * Builds the PI context from trigger info and inputs.
+ */
+async function buildPIContext(
+	triggerInfo: TriggerInfo,
+	ghClient: GitHubClient,
+	triggerPhrase: string,
+): Promise<PIContext> {
 	const sanitizedBody = sanitizeInput(triggerInfo.triggerText);
-	const task = extractTask(sanitizedBody, inputs.triggerPhrase);
+	const task = extractTask(sanitizedBody, triggerPhrase);
 
 	const piContext: PIContext = {
 		type: triggerInfo.isPullRequest ? "pull_request" : "issue",
@@ -115,18 +122,20 @@ export async function run(deps: ActionDependencies): Promise<void> {
 		piContext.diff = await ghClient.getPullRequestDiff(triggerInfo.issueNumber);
 	}
 
-	log.info(`Running pi agent for: ${task}`);
+	return piContext;
+}
 
-	// Run the agent
-	const result = await runAgent(piContext, {
-		provider: inputs.provider,
-		model: inputs.model,
-		timeout: inputs.timeout,
-		cwd,
-		logger: log,
-		promptTemplate: inputs.promptTemplate,
-	});
-
+/**
+ * Posts the agent result as a comment with appropriate reaction.
+ */
+async function postResult(
+	ghClient: GitHubClient,
+	triggerInfo: TriggerInfo,
+	result:
+		| { success: true; response: string }
+		| { success: false; error: string },
+	log: Logger,
+): Promise<void> {
 	if (result.success) {
 		await addReaction(ghClient, triggerInfo, "rocket");
 		await ghClient.createComment(
@@ -141,4 +150,39 @@ export async function run(deps: ActionDependencies): Promise<void> {
 			formatErrorComment(result.error),
 		);
 	}
+}
+
+export async function run(deps: ActionDependencies): Promise<void> {
+	const { inputs, log, cwd } = deps;
+
+	setupAuth(inputs.piAuthJson);
+
+	// Validate and extract trigger info
+	const validated = validateTrigger(deps);
+	if (!validated) return;
+
+	const { triggerInfo, ghClient } = validated;
+
+	// Add eyes reaction to acknowledge
+	await addReaction(ghClient, triggerInfo, "eyes");
+
+	// Build context
+	const piContext = await buildPIContext(
+		triggerInfo,
+		ghClient,
+		inputs.triggerPhrase,
+	);
+
+	log.info(`Running pi agent for: ${piContext.task}`);
+
+	// Run the agent
+	const result = await runAgent(piContext, {
+		...inputs.modelConfig,
+		cwd,
+		logger: log,
+		promptTemplate: inputs.promptTemplate,
+	});
+
+	// Post result
+	await postResult(ghClient, triggerInfo, result, log);
 }

@@ -185,7 +185,7 @@ describe("createGitHubClient", () => {
 	const mockContext: GitHubContext = {
 		repo: {
 			owner: "testowner",
-			repo: "testrepo",
+			name: "testrepo",
 		},
 	};
 

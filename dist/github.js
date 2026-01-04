@@ -30,35 +30,36 @@ export function extractTriggerInfo(payload) {
     };
 }
 export function createGitHubClient(octokit, context) {
+    const { owner, name: repo } = context.repo;
     return {
         async addReactionToComment(commentId, reaction) {
             await octokit.rest.reactions.createForIssueComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 comment_id: commentId,
                 content: reaction,
             });
         },
         async addReactionToIssue(issueNumber, reaction) {
             await octokit.rest.reactions.createForIssue({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 issue_number: issueNumber,
                 content: reaction,
             });
         },
         async createComment(issueNumber, body) {
             await octokit.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 issue_number: issueNumber,
                 body,
             });
         },
         async getPullRequestDiff(pullNumber) {
             const { data: diff } = await octokit.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 pull_number: pullNumber,
                 mediaType: { format: "diff" },
             });

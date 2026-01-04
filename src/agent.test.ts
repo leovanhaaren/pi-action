@@ -1,6 +1,10 @@
 import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
-import { type AgentConfig, runAgent } from "./agent.js";
-import type { PIContext } from "./context.js";
+import { runAgent } from "./agent.js";
+import {
+	createAgentConfig,
+	createMockSession,
+	createPIContext,
+} from "./test-helpers.js";
 
 // Mock the pi-coding-agent SDK
 vi.mock("@mariozechner/pi-coding-agent", () => {
@@ -40,21 +44,8 @@ const mockCreateAgentSession = createAgentSession as Mock;
 const mockDiscoverModels = discoverModels as Mock;
 
 describe("runAgent", () => {
-	const defaultContext: PIContext = {
-		type: "issue",
-		title: "Test Issue",
-		body: "Issue body",
-		number: 1,
-		triggerComment: "@pi do something",
-		task: "do something",
-	};
-
-	const defaultConfig: AgentConfig = {
-		provider: "anthropic",
-		model: "claude-sonnet-4-20250514",
-		timeout: 300,
-		cwd: "/test/dir",
-	};
+	const defaultContext = createPIContext();
+	const defaultConfig = createAgentConfig();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -205,7 +196,7 @@ describe("runAgent", () => {
 		expect(result.error).toContain("Timeout");
 	}, 1000);
 
-	it("handles unknown errors", async () => {
+	it("handles string errors", async () => {
 		const mockModel = { provider: "anthropic", id: "claude-sonnet-4-20250514" };
 		const mockRegistry = {
 			find: vi.fn(() => mockModel),
@@ -213,6 +204,21 @@ describe("runAgent", () => {
 		mockDiscoverModels.mockReturnValue(mockRegistry);
 
 		mockCreateAgentSession.mockRejectedValue("string error");
+
+		const result = await runAgent(defaultContext, defaultConfig);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("string error");
+	});
+
+	it("handles truly unknown errors", async () => {
+		const mockModel = { provider: "anthropic", id: "claude-sonnet-4-20250514" };
+		const mockRegistry = {
+			find: vi.fn(() => mockModel),
+		};
+		mockDiscoverModels.mockReturnValue(mockRegistry);
+
+		mockCreateAgentSession.mockRejectedValue(42);
 
 		const result = await runAgent(defaultContext, defaultConfig);
 
@@ -227,15 +233,12 @@ describe("runAgent", () => {
 			find: vi.fn(() => customModel),
 		};
 
-		const mockSession = {
-			subscribe: vi.fn(),
-			prompt: vi.fn(),
-		};
+		const mockSession = createMockSession();
 		mockCreateAgentSession.mockResolvedValue({ session: mockSession });
 
 		await runAgent(
 			defaultContext,
-			{ ...defaultConfig, provider: "openai", model: "gpt-4" },
+			createAgentConfig({ provider: "openai", model: "gpt-4" }),
 			// @ts-expect-error - mocking in tests
 			customAuth,
 			// @ts-expect-error - mocking in tests
@@ -253,10 +256,7 @@ describe("runAgent", () => {
 		};
 		mockDiscoverModels.mockReturnValue(mockRegistry);
 
-		const mockSession = {
-			subscribe: vi.fn(),
-			prompt: vi.fn(),
-		};
+		const mockSession = createMockSession();
 		mockCreateAgentSession.mockResolvedValue({ session: mockSession });
 
 		await runAgent(defaultContext, defaultConfig);
@@ -282,15 +282,13 @@ describe("runAgent", () => {
 		mockDiscoverModels.mockReturnValue(mockRegistry);
 
 		let capturedPrompt = "";
-		const mockSession = {
-			subscribe: vi.fn(),
-			prompt: vi.fn((prompt: string) => {
-				capturedPrompt = prompt;
-			}),
-		};
+		const mockSession = createMockSession();
+		mockSession.prompt.mockImplementation((prompt: string) => {
+			capturedPrompt = prompt;
+		});
 		mockCreateAgentSession.mockResolvedValue({ session: mockSession });
 
-		const prContext: PIContext = {
+		const prContext = createPIContext({
 			type: "pull_request",
 			title: "Add feature",
 			body: "PR body",
@@ -298,7 +296,7 @@ describe("runAgent", () => {
 			triggerComment: "@pi review",
 			task: "review",
 			diff: "+added line\n-removed line",
-		};
+		});
 
 		await runAgent(prContext, defaultConfig);
 

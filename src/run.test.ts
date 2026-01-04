@@ -1,8 +1,13 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULTS } from "./defaults.js";
 import { type ActionDependencies, run, setupAuth } from "./run.js";
-import { createMockGitHubClient } from "./test-helpers.js";
+import {
+	createMockGitHubClient,
+	createModelConfig,
+	createRepoRef,
+} from "./test-helpers.js";
 
 // Mock the agent module
 vi.mock("./agent.js", () => ({
@@ -58,17 +63,16 @@ describe("run", () => {
 	): ActionDependencies {
 		return {
 			inputs: {
-				triggerPhrase: "@pi",
+				triggerPhrase: DEFAULTS.triggerPhrase,
 				allowedBots: [],
-				timeout: 300,
-				provider: "anthropic",
-				model: "claude-sonnet-4-20250514",
+				modelConfig: createModelConfig(),
 				githubToken: "test-token",
 				piAuthJson: undefined,
+				promptTemplate: undefined,
 			},
 			context: {
 				payload: {},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => createMockGitHubClient()),
 			log: {
@@ -142,13 +146,12 @@ describe("run", () => {
 		const mockClient = createMockGitHubClient();
 		const deps = createMockDeps({
 			inputs: {
-				triggerPhrase: "@pi",
+				triggerPhrase: DEFAULTS.triggerPhrase,
 				allowedBots: ["dependabot[bot]"],
-				timeout: 300,
-				provider: "anthropic",
-				model: "claude-sonnet-4-20250514",
+				modelConfig: createModelConfig(),
 				githubToken: "test-token",
 				piAuthJson: undefined,
+				promptTemplate: undefined,
 			},
 			context: {
 				payload: {
@@ -166,7 +169,7 @@ describe("run", () => {
 						author_association: "NONE",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => mockClient),
 		});
@@ -187,13 +190,12 @@ describe("run", () => {
 	it("fails when github_token is missing", async () => {
 		const deps = createMockDeps({
 			inputs: {
-				triggerPhrase: "@pi",
+				triggerPhrase: DEFAULTS.triggerPhrase,
 				allowedBots: [],
-				timeout: 300,
-				provider: "anthropic",
-				model: "claude-sonnet-4-20250514",
+				modelConfig: createModelConfig(),
 				githubToken: undefined,
 				piAuthJson: undefined,
+				promptTemplate: undefined,
 			},
 			context: {
 				payload: {
@@ -205,7 +207,7 @@ describe("run", () => {
 						author_association: "OWNER",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 		});
 
@@ -226,7 +228,7 @@ describe("run", () => {
 						author_association: "OWNER",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => mockClient),
 		});
@@ -246,9 +248,9 @@ describe("run", () => {
 				task: "help me",
 			}),
 			expect.objectContaining({
-				provider: "anthropic",
-				model: "claude-sonnet-4-20250514",
-				timeout: 300,
+				provider: DEFAULTS.provider,
+				model: DEFAULTS.model,
+				timeout: DEFAULTS.timeout,
 				cwd: "/test/cwd",
 			}),
 		);
@@ -272,7 +274,7 @@ describe("run", () => {
 						author_association: "MEMBER",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => mockClient),
 		});
@@ -310,7 +312,7 @@ describe("run", () => {
 						author_association: "COLLABORATOR",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => mockClient),
 		});
@@ -351,7 +353,7 @@ describe("run", () => {
 						author_association: "OWNER",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => mockClient),
 		});
@@ -382,7 +384,7 @@ describe("run", () => {
 						author_association: "OWNER",
 					},
 				},
-				repo: { owner: "testowner", repo: "testrepo" },
+				repo: createRepoRef(),
 			},
 			createClient: vi.fn(() => mockClient),
 		});

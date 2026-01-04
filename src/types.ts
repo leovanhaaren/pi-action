@@ -14,6 +14,23 @@ export interface GitHubUser {
 	type: "User" | "Bot" | "Organization";
 }
 
+/**
+ * Repository reference with clearer naming (avoids repo.repo)
+ */
+export interface RepoRef {
+	owner: string;
+	name: string;
+}
+
+/**
+ * Model configuration - commonly passed together
+ */
+export interface ModelConfig {
+	provider: string;
+	model: string;
+	timeout: number;
+}
+
 // Updated TriggerInfo interface using proper types
 export interface TriggerInfo {
 	isCommentEvent: boolean;

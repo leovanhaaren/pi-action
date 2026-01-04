@@ -1,9 +1,6 @@
-import type { GitHubReaction, OctokitClient, TriggerInfo } from "./types.js";
+import type { GitHubReaction, OctokitClient, RepoRef, TriggerInfo } from "./types.js";
 export interface GitHubContext {
-    repo: {
-        owner: string;
-        repo: string;
-    };
+    repo: RepoRef;
 }
 export declare function extractTriggerInfo(payload: Record<string, unknown>): TriggerInfo | null;
 export interface GitHubClient {

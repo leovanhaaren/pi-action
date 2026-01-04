@@ -2,14 +2,12 @@ import type {
 	GitHubReaction,
 	GitHubUser,
 	OctokitClient,
+	RepoRef,
 	TriggerInfo,
 } from "./types.js";
 
 export interface GitHubContext {
-	repo: {
-		owner: string;
-		repo: string;
-	};
+	repo: RepoRef;
 }
 
 export function extractTriggerInfo(
@@ -69,11 +67,13 @@ export function createGitHubClient(
 	octokit: OctokitClient,
 	context: GitHubContext,
 ): GitHubClient {
+	const { owner, name: repo } = context.repo;
+
 	return {
 		async addReactionToComment(commentId: number, reaction: GitHubReaction) {
 			await octokit.rest.reactions.createForIssueComment({
-				owner: context.repo.owner,
-				repo: context.repo.repo,
+				owner,
+				repo,
 				comment_id: commentId,
 				content: reaction,
 			});
@@ -81,8 +81,8 @@ export function createGitHubClient(
 
 		async addReactionToIssue(issueNumber: number, reaction: GitHubReaction) {
 			await octokit.rest.reactions.createForIssue({
-				owner: context.repo.owner,
-				repo: context.repo.repo,
+				owner,
+				repo,
 				issue_number: issueNumber,
 				content: reaction,
 			});
@@ -90,8 +90,8 @@ export function createGitHubClient(
 
 		async createComment(issueNumber: number, body: string) {
 			await octokit.rest.issues.createComment({
-				owner: context.repo.owner,
-				repo: context.repo.repo,
+				owner,
+				repo,
 				issue_number: issueNumber,
 				body,
 			});
@@ -99,8 +99,8 @@ export function createGitHubClient(
 
 		async getPullRequestDiff(pullNumber: number): Promise<string> {
 			const { data: diff } = await octokit.rest.pulls.get({
-				owner: context.repo.owner,
-				repo: context.repo.repo,
+				owner,
+				repo,
 				pull_number: pullNumber,
 				mediaType: { format: "diff" },
 			});

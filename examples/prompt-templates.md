@@ -157,12 +157,10 @@ Focused on test-related tasks:
       ## Context
       {{body}}
       
-      {{#if diff}}
       ## Code Changes
       ```diff
       {{diff}}
       ```
-      {{/if}}
       
       ## Testing Requirements
       - Write comprehensive unit tests
@@ -215,13 +213,15 @@ For security-focused reviews:
 4. **Maintain consistency**: Use similar templates across your project for consistency
 5. **Version control**: Store your templates in your repository for team sharing
 
-## Conditional Logic
+## Notes on Template Variables
 
-Note that the template system uses simple variable replacement. For more complex conditional logic (like showing diff only for PRs), you might need to:
+The template system uses simple variable replacement (`{{variable}}`). It does **not** support conditional logic like `{{#if}}` or loops.
+
+For conditional behavior (like showing diff only for PRs), consider:
 
 1. Create separate workflow files for issues vs PRs
 2. Use different templates for different event types
-3. Handle the logic in your template content
+3. Note that `{{diff}}` will be empty for issues, so including it is harmless
 
 ## Troubleshooting
 

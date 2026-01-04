@@ -10,20 +10,72 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import type { PIContext } from "./context.js";
 import { buildPrompt } from "./context.js";
-import type { AgentResult } from "./types.js";
-import { getErrorMessage } from "./utils.js";
+import type { AgentResult, ModelConfig } from "./types.js";
+import { getErrorMessage, withTimeout } from "./utils.js";
 
 export interface AgentLogger {
 	info: (msg: string) => void;
 }
 
-export interface AgentConfig {
-	provider: string;
-	model: string;
-	timeout: number;
+export interface AgentConfig extends ModelConfig {
 	cwd: string;
 	logger?: AgentLogger;
 	promptTemplate?: string;
+}
+
+/**
+ * Session event types from the pi SDK
+ */
+interface SessionEvent {
+	type: string;
+	toolName?: string;
+	args?: Record<string, unknown>;
+	isError?: boolean;
+	assistantMessageEvent?: {
+		type: string;
+		delta?: string;
+	};
+}
+
+/**
+ * Creates a session event handler that logs tool executions and collects response text.
+ */
+function createSessionEventHandler(
+	log: AgentLogger,
+	onTextDelta: (delta: string) => void,
+): (event: SessionEvent) => void {
+	return (event: SessionEvent) => {
+		switch (event.type) {
+			case "turn_start":
+				log.info("🔄 Turn started");
+				break;
+			case "turn_end":
+				log.info("✅ Turn completed");
+				break;
+			case "tool_execution_start":
+				log.info(`🔧 Tool: ${event.toolName}`);
+				if (event.toolName === "bash" && event.args?.command) {
+					log.info(`   $ ${event.args.command}`);
+				} else if (event.toolName === "read" && event.args?.path) {
+					log.info(`   📖 ${event.args.path}`);
+				} else if (event.toolName === "write" && event.args?.path) {
+					log.info(`   ✏️ ${event.args.path}`);
+				} else if (event.toolName === "edit" && event.args?.path) {
+					log.info(`   📝 ${event.args.path}`);
+				}
+				break;
+			case "tool_execution_end":
+				if (event.isError) {
+					log.info(`   ❌ Tool error: ${event.toolName}`);
+				}
+				break;
+			case "message_update":
+				if (event.assistantMessageEvent?.type === "text_delta") {
+					onTextDelta(event.assistantMessageEvent.delta ?? "");
+				}
+				break;
+		}
+	};
 }
 
 export async function runAgent(
@@ -71,65 +123,25 @@ export async function runAgent(
 		});
 
 		const log = config.logger ?? { info: () => {} };
-
-		// Subscribe to collect response and log events
-		session.subscribe((event) => {
-			switch (event.type) {
-				case "turn_start":
-					log.info("🔄 Turn started");
-					break;
-				case "turn_end":
-					log.info("✅ Turn completed");
-					break;
-				case "tool_execution_start":
-					log.info(`🔧 Tool: ${event.toolName}`);
-					if (event.toolName === "bash" && event.args?.command) {
-						log.info(`   $ ${event.args.command}`);
-					} else if (event.toolName === "read" && event.args?.path) {
-						log.info(`   📖 ${event.args.path}`);
-					} else if (event.toolName === "write" && event.args?.path) {
-						log.info(`   ✏️ ${event.args.path}`);
-					} else if (event.toolName === "edit" && event.args?.path) {
-						log.info(`   📝 ${event.args.path}`);
-					}
-					break;
-				case "tool_execution_end":
-					if (event.isError) {
-						log.info(`   ❌ Tool error: ${event.toolName}`);
-					}
-					break;
-				case "message_update":
-					if (event.assistantMessageEvent.type === "text_delta") {
-						response += event.assistantMessageEvent.delta;
-					}
-					break;
-			}
+		const eventHandler = createSessionEventHandler(log, (delta) => {
+			response += delta;
 		});
 
-		// Create a timeout promise
-		const timeoutId = setTimeout(
-			() => reject(new Error(`Timeout after ${config.timeout} seconds`)),
+		session.subscribe(eventHandler);
+
+		// Run with timeout
+		await withTimeout(
+			session.prompt(prompt),
 			config.timeout * 1000,
+			`Timeout after ${config.timeout} seconds`,
 		);
 
-		let reject: (reason?: unknown) => void;
-		const timeoutPromise = new Promise<never>((_, rej) => {
-			reject = rej;
-		});
-
-		try {
-			// Run with timeout
-			await Promise.race([session.prompt(prompt), timeoutPromise]);
-
-			const trimmedResponse = response.trim();
-			if (!trimmedResponse) {
-				return { success: false, error: "Agent returned empty response" };
-			}
-
-			return { success: true, response: trimmedResponse };
-		} finally {
-			clearTimeout(timeoutId);
+		const trimmedResponse = response.trim();
+		if (!trimmedResponse) {
+			return { success: false, error: "Agent returned empty response" };
 		}
+
+		return { success: true, response: trimmedResponse };
 	} catch (error) {
 		return { success: false, error: getErrorMessage(error) };
 	}
