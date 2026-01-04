@@ -23946,7 +23946,7 @@ function setupAuth() {
     const authDir = (0, import_node_path.join)((0, import_node_os.homedir)(), ".pi", "agent");
     (0, import_node_fs.mkdirSync)(authDir, { recursive: true });
     (0, import_node_fs.writeFileSync)((0, import_node_path.join)(authDir, "auth.json"), authJson);
-    core.info("Wrote PI auth.json");
+    core.info("Wrote pi auth.json");
   }
 }
 async function run() {
@@ -24044,7 +24044,7 @@ ${prompt}`);
     });
   } catch (error2) {
     const errorMessage = error2 instanceof Error ? error2.message : "Unknown error";
-    core.error(`PI execution failed: ${errorMessage}`);
+    core.error(`pi execution failed: ${errorMessage}`);
     if (isCommentEvent) {
       await octokit.rest.reactions.createForIssueComment({
         owner: context.repo.owner,
@@ -24064,7 +24064,7 @@ ${prompt}`);
       owner: context.repo.owner,
       repo: context.repo.repo,
       issue_number: issue.number,
-      body: `### \u274C PI Error
+      body: `### \u274C pi Error
 
 Failed to process request: ${errorMessage}`
     });
@@ -24094,7 +24094,7 @@ Failed to process request: ${errorMessage}`
     owner: context.repo.owner,
     repo: context.repo.repo,
     issue_number: issue.number,
-    body: `### \u{1F916} PI Response
+    body: `### \u{1F916} pi Response
 
 ${response}`
   });

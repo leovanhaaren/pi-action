@@ -1,7 +1,7 @@
 {
 	"name": "pi-action",
 	"version": "1.0.0",
-	"description": "GitHub Action to invoke the PI coding agent on issues and PRs",
+	"description": "GitHub Action to invoke the pi coding agent on issues and PRs",
 
 	"scripts": {
 		"build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --format=cjs",

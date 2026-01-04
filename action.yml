@@ -1,5 +1,5 @@
-name: 'PI Action'
-description: 'Invoke the PI coding agent on GitHub issues and PRs via comment triggers'
+name: 'pi-action'
+description: 'Invoke the pi coding agent on GitHub issues and PRs via comment triggers'
 author: 'Carlos Villela'
 branding:
   icon: 'cpu'
@@ -13,7 +13,7 @@ inputs:
     description: 'Contents of ~/.pi/agent/auth.json for OAuth authentication'
     required: false
   trigger_phrase:
-    description: 'Phrase to trigger PI (e.g., @pi)'
+    description: 'Phrase to trigger pi (e.g., @pi)'
     default: '@pi'
   allowed_bots:
     description: 'Comma-separated list of allowed bot usernames'

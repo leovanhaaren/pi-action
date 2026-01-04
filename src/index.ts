@@ -15,7 +15,7 @@ function setupAuth(): void {
 		const authDir = join(homedir(), ".pi", "agent");
 		mkdirSync(authDir, { recursive: true });
 		writeFileSync(join(authDir, "auth.json"), authJson);
-		core.info("Wrote PI auth.json");
+		core.info("Wrote pi auth.json");
 	}
 }
 
@@ -132,7 +132,7 @@ async function run(): Promise<void> {
 	const promptFile = join(tmpdir(), `pi-prompt-${Date.now()}.md`);
 	writeFileSync(promptFile, prompt);
 
-	// Execute PI
+	// Execute pi
 	let response: string;
 	try {
 		const cmd = `pi --provider ${provider} --model ${model} -p @${promptFile}`;
@@ -145,7 +145,7 @@ async function run(): Promise<void> {
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
-		core.error(`PI execution failed: ${errorMessage}`);
+		core.error(`pi execution failed: ${errorMessage}`);
 
 		// Add confused reaction - different API for comments vs issues
 		if (isCommentEvent) {
@@ -168,7 +168,7 @@ async function run(): Promise<void> {
 			owner: context.repo.owner,
 			repo: context.repo.repo,
 			issue_number: issue.number,
-			body: `### ❌ PI Error\n\nFailed to process request: ${errorMessage}`,
+			body: `### ❌ pi Error\n\nFailed to process request: ${errorMessage}`,
 		});
 		return;
 	} finally {
@@ -200,7 +200,7 @@ async function run(): Promise<void> {
 		owner: context.repo.owner,
 		repo: context.repo.repo,
 		issue_number: issue.number,
-		body: `### 🤖 PI Response\n\n${response}`,
+		body: `### 🤖 pi Response\n\n${response}`,
 	});
 }
 

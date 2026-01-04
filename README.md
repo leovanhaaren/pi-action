@@ -1,10 +1,10 @@
-# PI Action
+# pi-action
 
-A GitHub Action that invokes the [PI coding agent](https://github.com/mariozechner/pi-coding-agent) on issues and pull requests via comment triggers.
+A GitHub Action that invokes the [pi coding agent](https://github.com/mariozechner/pi-coding-agent) on issues and pull requests via comment triggers.
 
 ## Features
 
-- 🤖 Trigger PI agent with customizable phrases (default: `@pi`)
+- 🤖 Trigger pi agent with customizable phrases (default: `@pi`)
 - 🔒 Security-first: Only allows repo owners, members, and collaborators
 - 🤝 Bot allowlist for automation workflows
 - 📝 Works on both issues and pull requests
@@ -18,7 +18,7 @@ A GitHub Action that invokes the [PI coding agent](https://github.com/mariozechn
 Create `.github/workflows/pi-assistant.yml`:
 
 ```yaml
-name: PI Assistant
+name: pi Assistant
 
 on:
   issues:
@@ -47,10 +47,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install PI
+      - name: Install pi
         run: npm install -g @mariozechner/pi-coding-agent
 
-      - name: Run PI Action
+      - name: Run pi-action
         uses: cv/pi-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
 
 ### Authentication
 
-PI requires authentication with your LLM provider. Set up the `PI_AUTH_JSON` secret in your repository:
+pi requires authentication with your LLM provider. Set up the `PI_AUTH_JSON` secret in your repository:
 
 1. Run `pi` locally and complete OAuth authentication
 2. Copy the contents of `~/.pi/agent/auth.json`
@@ -73,7 +73,7 @@ Alternatively, you can set provider-specific environment variables (e.g., `ANTHR
 |-------|-------------|----------|---------|
 | `github_token` | GitHub token for API access | Yes | - |
 | `pi_auth_json` | Contents of `~/.pi/agent/auth.json` | No | - |
-| `trigger_phrase` | Phrase to trigger PI | No | `@pi` |
+| `trigger_phrase` | Phrase to trigger pi | No | `@pi` |
 | `allowed_bots` | Comma-separated list of allowed bot usernames | No | - |
 | `timeout` | Execution timeout in seconds | No | `300` |
 | `provider` | LLM provider (anthropic, openai, google, etc.) | No | `anthropic` |
@@ -81,7 +81,7 @@ Alternatively, you can set provider-specific environment variables (e.g., `ANTHR
 
 ### Examples
 
-#### Allow Dependabot to trigger PI
+#### Allow Dependabot to trigger pi
 
 ```yaml
 - uses: cv/pi-action@v1
@@ -130,7 +130,7 @@ jobs:
 1. When a comment or issue/PR containing the trigger phrase is posted, the action is triggered
 2. The action validates that the author has write access to the repository
 3. An 👀 reaction is added to acknowledge the request
-4. PI is invoked with the issue/PR context and the task from the trigger
+4. pi is invoked with the issue/PR context and the task from the trigger
 5. The response is posted as a new comment with a 🚀 reaction
 
 ## Security
